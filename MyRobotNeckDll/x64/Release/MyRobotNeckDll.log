@@ -1,0 +1,19 @@
+﻿  MyRobotNeck.cpp
+d:\yoon\robot\not imu\myrobotneckdll\myrobotneckdll\MyRobotNeck.h(58): warning C4091: 'typedef ': 변수를 선언하지 않으면 'BLE_RobotPacket' 왼쪽은 무시됩니다.
+MyRobotNeck.cpp(293): warning C4244: '초기화 중': 'double'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+MyRobotNeck.cpp(294): warning C4244: '초기화 중': 'double'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+MyRobotNeck.cpp(295): warning C4244: '초기화 중': 'double'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+MyRobotNeck.cpp(301): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(1769): note: 'sprintf' 선언을 참조하십시오.
+MyRobotNeck.cpp(334): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(453): note: 'strtok' 선언을 참조하십시오.
+MyRobotNeck.cpp(349): warning C4996: 'strtok': This function or variable may be unsafe. Consider using strtok_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(453): note: 'strtok' 선언을 참조하십시오.
+     D:\Yoon\Robot\Not IMU\MyRobotNeckDll\x64\Release\MyRobotNeckDll.lib 라이브러리 및 D:\Yoon\Robot\Not IMU\MyRobotNeckDll\x64\Release\MyRobotNeckDll.exp 개체를 생성하고 있습니다.
+  코드를 생성하고 있습니다.
+  3 of 128 functions ( 2.3%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    1 functions had inline decision re-evaluated but remain unchanged
+  코드를 생성했습니다.
+  MyRobotNeckDll.vcxproj -> D:\Yoon\Robot\Not IMU\MyRobotNeckDll\x64\Release\MyRobotNeckDll.dll
+  MyRobotNeckDll.vcxproj -> D:\Yoon\Robot\Not IMU\MyRobotNeckDll\x64\Release\MyRobotNeckDll.pdb (Full PDB)
