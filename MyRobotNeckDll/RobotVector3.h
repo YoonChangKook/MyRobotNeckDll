@@ -37,6 +37,9 @@ public:
 	RobotVector3 Normalize() const;
 	float Distance(const RobotVector3& other) const;
 	float Length() const;
+	float GetX() const;
+	float GetY() const;
+	float GetZ() const;
 };
 
 #endif

@@ -34,6 +34,8 @@
 // {2da3e5b7-6289-d59b-ab30-bf7b16cce293}
 DEFINE_GUID(ROBOT_NECK_GUID, 0x2da3e5b7, 0x6289, 0xd59b, 0xab, 0x30, 0xbf, 0x7b, 0x16, 0xcc, 0xe2, 0x93);
 
+#define NECK_DRIFT 3
+
 enum RobotPacketType {
 	CALIB = 0,
 	CALIB_OK = 1,
@@ -55,7 +57,8 @@ typedef struct BLE_RobotPacket {
 	BYTE type;
 	char pitch;
 	char yaw;
-};
+} BLE_RobotPacket;
+#pragma pack(pop)
 
 class MY_ROBOT_NECK_API MyRobotNeck
 {
@@ -86,7 +89,10 @@ private:
 	// robot members
 	double limitRXMin, limitRXMax;
 	double limitRYMin, limitRYMax;
+	//double last_rx, last_ry;
 	RobotVector3 forward;
+	double originRY;
+	bool is_fix;
 	// event occur when rotation value is out of limit bound.
 	void(*limitEvent)(__in const double&, __in const double&);
 
@@ -108,6 +114,11 @@ public:
 	bool LimitInit();
 	bool Calibration();
 	bool Rotation(__in const double& pitch, __in const double& yaw);
+	// Prevent rotation from remote place (asynchronous)
+	void SetRotationFix(__in const bool is_fix);
+	bool GetRotationFix() const;
+	void SetCurrentToOrigin();
+	void GetCurrentValue(__out double& rx, __out double& ry) const;
 	/*
 	set event to detect whether the oculus rotation is over the robot neck rotation limit.
 	occurred when the oculus rotation value is over the limit value.

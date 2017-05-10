@@ -12,7 +12,7 @@ MyRobotNeck::MyRobotNeck()
 	bluetoothSocket(INVALID_SOCKET), bClientSocket(INVALID_SOCKET), bluetooth_reader(NULL),
 	wsaQuerySet({ 0 }), CSAddrInfo({ 0 }), instanceName(NULL), 
 	isSerialPortConnected(false), 
-	limitRXMin(0), limitRXMax(0), limitRYMin(0), limitRYMax(0), forward(), limitEvent(NULL)
+	limitRXMin(0), limitRXMax(0), limitRYMin(0), limitRYMax(0), forward(), originRY(0.0), is_fix(false), limitEvent(NULL)
 {
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
 	{
@@ -43,6 +43,11 @@ MyRobotNeck::~MyRobotNeck()
 	{
 		this->bluetooth_reader->detach();
 		delete this->bluetooth_reader;
+	}
+	// check wsa
+	if (isWsaStartup != false)
+	{
+		WSACleanup();
 	}
 }
 
@@ -255,8 +260,8 @@ void MyRobotNeck::GetLimitX(__out double& rxmin, __out double& rxmax)
 
 void MyRobotNeck::GetLimitY(__out double& rymin, __out double& rymax)
 {
-	rymin = this->limitRYMin;
-	rymax = this->limitRYMax;
+	rymin = this->limitRYMin + this->originRY;
+	rymax = this->limitRYMax - this->originRY;
 }
 
 bool MyRobotNeck::Calibration()
@@ -272,6 +277,9 @@ bool MyRobotNeck::Calibration()
 			return false;
 	}
 
+	this->forward = RobotVector3(0, 0, 1);
+	this->originRY = 0.0;
+
 	return true;
 }
 
@@ -281,14 +289,14 @@ bool MyRobotNeck::Rotation(__in const double& pitch, __in const double& yaw)
 		return false;
 
 	double correctionPitch = this->limitRXMin > pitch ? this->limitRXMin : (this->limitRXMax < pitch ? this->limitRXMax : pitch);
-	double correctionYaw = this->limitRYMin > yaw ? this->limitRYMin : (this->limitRYMax < yaw ? this->limitRYMax : yaw);
+	double correctionYaw = this->limitRYMin > (yaw + this->originRY) ? this->limitRYMin : (this->limitRYMax < (yaw + this->originRY) ? this->limitRYMax : (yaw + this->originRY));
 	BYTE rotation[100];
 
 	// limit event occur
 	if (this->limitEvent != NULL)
 		if (this->limitRXMin > pitch || this->limitRXMax < pitch ||
-			this->limitRYMin > yaw || this->limitRYMax < yaw)
-			this->limitEvent(pitch, yaw);
+			this->limitRYMin > (yaw + this->originRY) || this->limitRYMax < (yaw + this->originRY))
+			this->limitEvent(pitch, (yaw + this->originRY));
 
 	float x = sin(PI*correctionYaw/180) * cos(PI*correctionPitch/180);
 	float y = -sin(PI*correctionPitch/180);
@@ -307,6 +315,34 @@ bool MyRobotNeck::Rotation(__in const double& pitch, __in const double& yaw)
 	}
 
 	return true;
+}
+
+void MyRobotNeck::SetRotationFix(__in const bool is_fix)
+{
+	this->is_fix = is_fix;
+}
+bool MyRobotNeck::GetRotationFix() const
+{
+	return this->is_fix;
+}
+
+void MyRobotNeck::SetCurrentToOrigin()
+{
+	double rx, ry;
+	GetCurrentValue(rx, ry);
+	this->originRY = ry;
+}
+
+void MyRobotNeck::GetCurrentValue(__out double& rx, __out double& ry) const
+{
+	RobotVector3 temp_v = RobotVector3(this->forward.GetX(), 0.0f, this->forward.GetZ());
+	rx = this->forward.Angle(temp_v);
+	ry = temp_v.Angle(RobotVector3(0, 0, 1));
+
+	if (this->forward.GetY() < 0)
+		rx = -rx;
+	if (this->forward.GetX() < 0)
+		ry = -ry;
 }
 
 bool MyRobotNeck::LimitInit()
@@ -336,14 +372,14 @@ bool MyRobotNeck::LimitInit()
 			while (pch != NULL)
 			{
 				if (splitIndex == 1)
-					limitRXMin = atof(pch);
+					limitRXMin = atof(pch) + NECK_DRIFT;
 				else if (splitIndex == 2)
-					limitRXMax = atof(pch);
+					limitRXMax = atof(pch) - NECK_DRIFT;
 				else if (splitIndex == 3)
-					limitRYMin = atof(pch);
+					limitRYMin = atof(pch) + NECK_DRIFT;
 				else if (splitIndex == 4)
 				{
-					limitRYMax = atof(pch);
+					limitRYMax = atof(pch) - NECK_DRIFT;
 					return true;
 				}
 				pch = strtok(NULL, ",");
@@ -362,7 +398,6 @@ void MyRobotNeck::SetLimitEvent(void(*limitEvent)(__in const double& pitch, __in
 	this->limitEvent = limitEvent;
 }
 
-#pragma pack(push, 1)
 void MyRobotNeck::ReadUDP()
 {
 	struct sockaddr_in pcaddr;
@@ -397,19 +432,19 @@ void MyRobotNeck::ReadUDP()
 		// type check
 		if (packet.type == RobotPacketType::CALIB)
 		{
-			MyRobotNeck::Calibration();
+			if (!this->is_fix)
+				MyRobotNeck::Calibration();
 		}
 		else if (packet.type == RobotPacketType::ROT)
 		{
-			MyRobotNeck::Rotation(packet.pitch, packet.yaw);
+			if (!this->is_fix)
+				MyRobotNeck::Rotation(packet.pitch, packet.yaw);
 			// debug
 			//printf("Pitch: %lf, Yaw: %lf\n", packet.pitch, packet.yaw);
 		}
 	}
 }
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 void MyRobotNeck::ReadBluetooth()
 {
 	while (true)
@@ -446,11 +481,13 @@ void MyRobotNeck::ReadBluetooth()
 				// make packet and send to robot
 				if (packet.type == RobotPacketType::CALIB)
 				{
-					MyRobotNeck::Calibration();
+					if (!this->is_fix)
+						MyRobotNeck::Calibration();
 				}
 				else if (packet.type == RobotPacketType::ROT)
 				{
-					MyRobotNeck::Rotation((double)packet.pitch, (double)packet.yaw);
+					if (!this->is_fix)
+						MyRobotNeck::Rotation((double)packet.pitch, (double)packet.yaw);
 					// debug
 					//printf("Pitch: %lf, Yaw: %lf\n", packet.pitch, packet.yaw);
 				}
@@ -461,4 +498,3 @@ void MyRobotNeck::ReadBluetooth()
 		this->bClientSocket = INVALID_SOCKET;
 	}
 }
-#pragma pack(pop)

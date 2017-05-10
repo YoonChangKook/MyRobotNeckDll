@@ -65,3 +65,7 @@ float RobotVector3::Length() const
 {
 	return sqrt((x * x) + (y * y) + (z * z));
 }
+
+float RobotVector3::GetX() const { return this->x; }
+float RobotVector3::GetY() const { return this->y; }
+float RobotVector3::GetZ() const { return this->z; }
