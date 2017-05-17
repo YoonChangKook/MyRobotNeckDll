@@ -306,6 +306,40 @@ bool MyRobotNeck::Rotation(__in const double& pitch, __in const double& yaw)
 		return false;
 
 	this->forward = oculusForward;
+	sprintf((char*)rotation, "$IMU,68,%.2lf,%.2lf,\r\n", correctionYaw, correctionPitch * calibrate_rx);
+
+	for (const BYTE* tempByte = rotation; *tempByte != '\0'; tempByte++)
+	{
+		if (this->serialPort.WriteByte(*tempByte) == false)
+			return false;
+	}
+
+	return true;
+}
+
+bool MyRobotNeck::NoCalibrate_Rotation(__in const double& pitch, __in const double& yaw)
+{
+	if (isSerialPortConnected == false)
+		return false;
+
+	double correctionPitch = this->limitRXMin > pitch ? this->limitRXMin : (this->limitRXMax < pitch ? this->limitRXMax : pitch);
+	double correctionYaw = this->limitRYMin >(yaw + this->originRY) ? this->limitRYMin : (this->limitRYMax < (yaw + this->originRY) ? this->limitRYMax : (yaw + this->originRY));
+	BYTE rotation[100];
+
+	// limit event occur
+	if (this->limitEvent != NULL)
+		if (this->limitRXMin > pitch || this->limitRXMax < pitch ||
+			this->limitRYMin >(yaw + this->originRY) || this->limitRYMax < (yaw + this->originRY))
+			this->limitEvent(pitch, (yaw + this->originRY));
+
+	float x = sin(PI*correctionYaw / 180) * cos(PI*correctionPitch / 180);
+	float y = -sin(PI*correctionPitch / 180);
+	float z = cos(PI*correctionYaw / 180) * cos(PI*correctionPitch / 180);
+	RobotVector3 oculusForward = RobotVector3(x, y, z);
+	if (ROT_MIN_ANGLE > oculusForward.Angle(this->forward))
+		return false;
+
+	this->forward = oculusForward;
 	sprintf((char*)rotation, "$IMU,68,%.2lf,%.2lf,\r\n", correctionYaw, correctionPitch);
 
 	for (const BYTE* tempByte = rotation; *tempByte != '\0'; tempByte++)
@@ -330,18 +364,25 @@ void MyRobotNeck::SetCurrentToOrigin()
 {
 	double rx, ry;
 	GetCurrentValue(rx, ry);
-	this->originRY = ry;
+	// calibrate value set
+	this->originRY += ry;
+	// forward vector set
+	//this->forward = RobotVector3(0.0f, this->forward.GetY(), 1.0f).Normalize();
 }
 
 void MyRobotNeck::GetCurrentValue(__out double& rx, __out double& ry) const
 {
 	RobotVector3 temp_v = RobotVector3(this->forward.GetX(), 0.0f, this->forward.GetZ());
 	rx = this->forward.Angle(temp_v);
-	ry = temp_v.Angle(RobotVector3(0, 0, 1));
+	float x = sin(PI*this->originRY / 180);
+	float y = 0.0f;
+	float z = cos(PI*this->originRY / 180);
+	RobotVector3 originForward = RobotVector3(x, y, z);
+	ry = temp_v.Angle(originForward);
 
-	if (this->forward.GetY() < 0)
+	if (this->forward.GetY() > 0)
 		rx = -rx;
-	if (this->forward.GetX() < 0)
+	if (this->forward.GetX() < originForward.GetX())
 		ry = -ry;
 }
 
@@ -372,9 +413,9 @@ bool MyRobotNeck::LimitInit()
 			while (pch != NULL)
 			{
 				if (splitIndex == 1)
-					limitRXMin = atof(pch) + NECK_DRIFT;
+					limitRXMin = (atof(pch) + NECK_DRIFT) * (1 / this->calibrate_rx);
 				else if (splitIndex == 2)
-					limitRXMax = atof(pch) - NECK_DRIFT;
+					limitRXMax = (atof(pch) - NECK_DRIFT) * (1 / this->calibrate_rx);
 				else if (splitIndex == 3)
 					limitRYMin = atof(pch) + NECK_DRIFT;
 				else if (splitIndex == 4)

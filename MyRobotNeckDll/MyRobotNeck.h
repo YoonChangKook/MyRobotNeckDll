@@ -10,7 +10,7 @@
 #endif
 
 #define BUFFER_SIZE				256
-#define ROT_MIN_ANGLE			3
+#define ROT_MIN_ANGLE			0
 #define DEFAULT_LISTEN_BACKLOG	4
 #define INSTANCE_NAME			L"Robot Neck Control"
 #ifndef PI
@@ -67,6 +67,8 @@ public:
 	virtual ~MyRobotNeck();
 
 private:
+	const double calibrate_rx = 1.25;
+
 	WSADATA wsaData;
 	bool isWsaStartup;
 	// read oculus from remote pc and control robot neck (using ReadUDP function)
@@ -114,6 +116,7 @@ public:
 	bool LimitInit();
 	bool Calibration();
 	bool Rotation(__in const double& pitch, __in const double& yaw);
+	bool NoCalibrate_Rotation(__in const double& pitch, __in const double& yaw);
 	// Prevent rotation from remote place (asynchronous)
 	void SetRotationFix(__in const bool is_fix);
 	bool GetRotationFix() const;
